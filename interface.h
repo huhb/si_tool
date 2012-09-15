@@ -8,8 +8,12 @@
 #include <string.h>
 #include <errno.h>
 
+#define DRV_NAME_LEN 128
+#define LINE_LEN	1024
+#define DEV_NUM	10
+
 struct device_id {
-	unsigned int vendor_id, device_id;
+	u16 vendor_id, device_id;
 };
 
 struct device {
@@ -21,8 +25,9 @@ struct device {
 };
 
 struct driver {
-	struct device_id *id_tables;
-	int *genric_handler;
-	int own_handler;
-	int fixup;
+	char name[DRV_NAME_LEN];
+	struct device_id id_tables[DEV_NUM];
+	int (*fixup)(void);
+	int (*driver_handler)(void* parames);
+	struct driver *next;
 };
