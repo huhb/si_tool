@@ -25,7 +25,7 @@ struct driver *drivers_list[] = {
 #if 1
 static int driver_register(struct driver *drv)
 {
-	struct FILE *file;
+	FILE *file;
 	char drv_name[DRV_NAME_LEN], buf[LINE_LEN], *pos;
 	int id_num = 0, drv_match = 0;
 
@@ -81,7 +81,7 @@ static int driver_register(struct driver *drv)
 					printf("format error\n");
 					break;
 				}
-				drv->id_tables[id_num].vendor_id = strtol(pos, &endptr, 16);
+				drv->id_tables[id_num].vendor_id = strtol(pos, &endptr[0], 16);
 				drv->id_tables[id_num].device_id = strtol(endptr[0] + 1, NULL, 16);
 				id_num++;
 				while (*pos != ' ') {
@@ -144,59 +144,59 @@ static int query_devices(u16 dev_type, struct device_id *id)
 	return dev_index;
 }
 
+
+static int run_driver_handler(struct driver* driver, void *param)
+{
+	int ret;
+
+	printf("start to setup test_mode.....");
+	printf("driver _handler %p\n", driver->driver_handler);
+	if (driver->fixup)
+		driver->fixup();
+
+	if (driver->driver_handler)
+		ret = driver->driver_handler(param);
+
+	if (!ret) printf("successfully \n");
+	else printf("faild\n");
+
+	return ret;
+
+}
 int type_netcard_handler(void)
 {
-	int	num, ret = 0;
-	struct device *d;
-	struct device_id net_devices[3];
+	int	num;
 	struct driver *driver;
+	struct device_id net_device_ids[4];
 
-	memset((void*)net_devices, 0, 3 * sizeof(struct device_id));
-	if (!query_devices(PCI_CLASS_NETWORK_ETHERNET, net_devices)) {
+	memset((void*)net_device_ids, 0, 4 * sizeof(struct device_id));
+	if (!query_devices(PCI_CLASS_NETWORK_ETHERNET, net_device_ids)) {
 		printf("can't query NETWORK_ETHERNET device\n");
 		return -ENODEV;
 	}
 	printf("Please select device: ");
 	scanf("%d", &num);
 
-	driver = find_pci_driver(net_devices[num].vendor_id,
-					net_devices[num].device_id);
+	driver = find_pci_driver(net_device_ids[num].vendor_id,
+					net_device_ids[num].device_id);
 	if (!driver) {
 		printf("found no driver match\n");
 		exit(-EINVAL);
 	}
 
-	printf("[0] 10M mode\n");
-	printf("[1] 100M mode\n");
-	printf("[2] 1000M mode\n");
+	printf("[0] 10M mode\n"
+		"[1] 100M mode\n"
+		"[2] 1000M mode\n");
+
 	printf("Please select test mode: ");
 	scanf("%d", &num);
 
-	printf("start to setup test_mode.....");
-	printf("driver name %s\n", driver->name);
-	printf("driver _handler %p\n", driver->driver_handler);
-	if (driver->fixup)
-		driver->fixup();
-
-	if (driver->driver_handler)
-		ret = driver->driver_handler(&num);
-
-	if (!ret) printf("successfully \n");
-	else printf("faild\n");
-
-	return ret;
+	return run_driver_handler(driver, &num);
 }
 
 int type_usb_handler(void)
 {
-#if 0	
-	list same catgeory device
-	user select device
-	find  driver for device
-	user select usb port 
-	user select test_mode
-	run test_mode
-#endif	
+
 }
 
 int type_sata_handler(void)
@@ -211,40 +211,40 @@ int type_sata_handler(void)
 #endif	
 }
 
-struct device *
-scan_device(struct pci_dev *p)
+struct device *scan_device(struct pci_dev *p)
 {
-  struct device *d;
+	struct device *d;
 
-  d = malloc(sizeof(struct device));
-  memset(d, 0, sizeof(*d));
-  d->dev = p;
-  d->config_cached = d->config_bufsize = 64;
-  d->config = malloc(64);
-  d->present = malloc(64);
-  memset(d->present, 1, 64);
-  if (!pci_read_block(p, 0, d->config, 64))
-    {
-      fprintf(stderr, "lspci: Unable to read the standard configuration space header of device %04x:%02x:%02x.%d\n",
-              p->domain, p->bus, p->dev, p->func);
-    }
-  pci_setup_cache(p, d->config, d->config_cached);
-  pci_fill_info(p, PCI_FILL_IDENT | PCI_FILL_CLASS | PCI_FILL_IRQ | PCI_FILL_BASES | PCI_FILL_ROM_BASE | PCI_FILL_SIZES | PCI_FILL_PHYS_SLOT);
-  return d;
+	d = malloc(sizeof(struct device));
+	memset(d, 0, sizeof(*d));
+	d->dev = p;
+	d->config_cached = d->config_bufsize = 64;
+	d->config = malloc(64);
+	d->present = malloc(64);
+	memset(d->present, 1, 64);
+	if (!pci_read_block(p, 0, d->config, 64))
+	  {
+	    fprintf(stderr, "lspci: Unable to read the standard configuration space header of device %04x:%02x:%02x.%d\n",
+		    p->domain, p->bus, p->dev, p->func);
+	  }
+	pci_setup_cache(p, d->config, d->config_cached);
+	pci_fill_info(p, PCI_FILL_IDENT | PCI_FILL_CLASS | PCI_FILL_IRQ | \
+			PCI_FILL_BASES | PCI_FILL_ROM_BASE | PCI_FILL_SIZES | PCI_FILL_PHYS_SLOT);
+	return d;
 }
 
 static void scan_devices(void)
 {
-  struct device *d;
-  struct pci_dev *p;
+	struct device *d;
+	struct pci_dev *p;
 
-  pci_scan_bus(pacc);
-  for (p=pacc->devices; p; p=p->next)
-    if (d = scan_device(p))
-      {
-        d->next = first_dev;
-        first_dev = d;
-      }
+	pci_scan_bus(pacc);
+	for (p=pacc->devices; p; p=p->next)
+	  if (d = scan_device(p))
+	    {
+	      d->next = first_dev;
+	      first_dev = d;
+	    }
 }
 
 int drivers_init(void)
