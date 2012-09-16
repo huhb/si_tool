@@ -4,9 +4,10 @@ struct pci_access *pacc;
 struct device *first_dev;
 struct driver *first_drv;
 
+extern int debug; /*define in main.c */
 extern struct driver rtl8186_driver;
 extern struct driver sb710_usb_driver;
-#if 1
+
 struct driver *drivers_list[] = {
 	&rtl8186_driver,
 	&sb710_usb_driver,
@@ -20,9 +21,7 @@ struct driver *drivers_list[] = {
 #endif	
 	NULL,
 };
-#endif
 
-#if 1
 static int driver_register(struct driver *drv)
 {
 	FILE *file;
@@ -34,9 +33,7 @@ static int driver_register(struct driver *drv)
 
 	memset(drv_name, 0, DRV_NAME_LEN);
 	memcpy(drv_name, drv->name, strlen(drv->name));
-#ifdef xx
-	printf("drv_name %s\n", drv_name);
-#endif
+	DEBUG("drv_name %s\n", drv_name);
 
 #define CONFIG_FILE	"si_config"
 	file = fopen(CONFIG_FILE, "r");
@@ -63,12 +60,12 @@ static int driver_register(struct driver *drv)
 		if (!pos_tmp) /* only driver name */
 			continue;
 
-		printf("post_tmp %s\n", pos_tmp);
-		printf("pos2 %s\n", pos);
+		DEBUG("post_tmp %s\n", pos_tmp);
+		DEBUG("pos2 %s\n", pos);
 		if (!strncmp(drv_name, pos, \
 					(pos_tmp - pos) > strlen(drv_name) ? \
 					(pos_tmp - pos) : strlen(drv_name))) {
-			printf("driver match\n");
+			DEBUG("driver match\n");
 			drv_match = 1;
 			pos =  pos_tmp;
 			while (*pos != '\n' || *pos != '\0') {
@@ -95,7 +92,6 @@ static int driver_register(struct driver *drv)
 	}
 	return drv_match;
 }
-#endif
 
 static struct driver *find_driver(u16 vendor, u16 device)
 {
@@ -103,9 +99,9 @@ static struct driver *find_driver(u16 vendor, u16 device)
 	struct device_id *ids;
 
 	if (first_drv) {
-		printf("first_drv ok\n");
-		printf("first_drv name %s\n", first_drv->name);
-		printf("fist_drv vendor id 0x%x, device 0x%x\n", first_drv->id_tables[0].vendor_id,
+		DEBUG("first_drv ok\n");
+		DEBUG("first_drv name %s\n", first_drv->name);
+		DEBUG("fist_drv vendor id 0x%x, device 0x%x\n", first_drv->id_tables[0].vendor_id,
 				first_drv->id_tables[0].device_id);
 	}
 	if (!first_drv) {
@@ -114,10 +110,10 @@ static struct driver *find_driver(u16 vendor, u16 device)
 
 	for (d = first_drv; d; d = d->next) {
 		for (ids = d->id_tables; (ids->vendor_id && ids->device_id); ids++) {
-			printf("ids->vendor 0x%x, 0x%x\n", ids->vendor_id, ids->device_id);
+			DEBUG("ids->vendor 0x%x, 0x%x\n", ids->vendor_id, ids->device_id);
 			if ((ids->vendor_id == vendor) &&
 				ids->device_id == device) {
-				printf("find driver\n");
+				DEBUG("find driver\n");
 				return d;
 			}
 		}
@@ -163,7 +159,7 @@ static int run_driver_handler(struct driver* driver, void *param)
 	int ret;
 
 	printf("start to setup test_mode.....");
-	printf("driver _handler %p\n", driver->driver_handler);
+	DEBUG("driver _handler %p\n", driver->driver_handler);
 	if (driver->fixup)
 		driver->fixup();
 
@@ -193,7 +189,7 @@ int type_netcard_handler(void)
 	printf("Please select device: ");
 	scanf("%d", &num);
 
-	printf("select device 0x%x:0x%x\n", devices[num]->vendor_id,
+	DEBUG("select device 0x%x:0x%x\n", devices[num]->vendor_id,
 					devices[num]->device_id);
 	net_param.dev = devices[num];
 

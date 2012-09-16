@@ -1,30 +1,73 @@
+#include <getopt.h>
+#include <unistd.h>
 #include "interface.h"
 
-static void useages(void)
+int debug = 0;  /* 0 off, 1 on */
+
+struct option longopts[] = {
+	{ "usb", no_argument, NULL, 'u'},
+	{ "net", no_argument, NULL, 'n'},
+	{ "sata", no_argument, NULL, 's'},
+	{ "debug", no_argument, NULL, 'd'},
+	{ "help", no_argument, NULL, 'h'},
+	{ "version", no_argument, NULL, 'v'},
+	{ 0, 0, 0, 0},
+};
+
+static void usage(void)
 {
-	printf("programe useage: \n \
-		si_tool netcard #Test netcard\n \
-		si_tool sata #Test sata\n \
-		si_tool usb #Test usb\n");
+	printf("Usage: si_tool [options]...\n" 
+		"Valid options.\n"
+		"  --usb        Test usb\n"
+		"  --sata       Test sata\n"
+		"  --netcard    Test netcard\n"
+		"  -d, --debug  print debug info\n"
+		"  --help       display this help and exit\n"
+		"  --version    output version and exit\n");
 }
 
 int main(int argc, char **argv)
 {
+	char c;
+	int ret, handled = 0;
+
 	/* parse user argument */
 	if (argc < 2)
-		goto USEAGES;
+		goto USAGE;
 	drivers_init();
 
-	if (!strcmp(argv[1], "netcard")) {
-		return type_netcard_handler();
+	while ((c = getopt_long(argc, argv, "d", longopts, NULL)) != -1) {
+		switch (c) {
+		case 'u':
+			handled = 1;
+			ret = type_usb_handler();
+			break;
+		case 'n':
+			handled = 1;
+			ret = type_netcard_handler();
+			break;
+		case 's':
+			handled = 1;
+			ret = type_sata_handler();
+			break;
+		case 'd':
+			debug = 1;
+			break;
+		case '?':
+		case 'h':
+			goto USAGE;
+			break;
+		case 'v':
+			printf("version %s\n", SI_VERSION);
+			return 0;
+		}
 	}
-	if (!strcmp(argv[1], "sata")) {
-		return type_sata_handler();
-	}
-	if (!strcmp(argv[1], "usb")) {
-		return type_usb_handler();
-	}
-USEAGES:
-	useages();
+
+	if (!handled)
+	  goto USAGE;
+
+	return ret;
+USAGE:
+	usage();
 	return -EINVAL;
 }

@@ -8,9 +8,10 @@
 #include <string.h>
 #include <errno.h>
 
-#define DRV_NAME_LEN 128
-#define LINE_LEN	1024
+#define SI_VERSION  "0.0.1"
 #define DEV_NUM	10
+#define LINE_LEN	1024
+#define DRV_NAME_LEN 128
 
 struct device_id {
 	u16 vendor_id, device_id;
@@ -31,3 +32,24 @@ struct driver {
 	int (*driver_handler)(void* parames);
 	struct driver *next;
 };
+
+struct net_param {
+	int mode;
+	struct pci_dev *dev;
+};
+
+struct usb_param {
+	int port_num;
+	int mode;
+	struct pci_dev *dev;
+};
+
+struct sata_param {
+	int slot;
+	int mode;
+	struct pci_dev *dev;
+};
+
+#define DEBUG(format...) do {if (debug) printf(format);} while(0)
+//extern int read_device_regs(struct pci_dev *dev, int base_num, int reg, int size);
+//extern void wirte_device_regs(struct pci_dev *dev, int base_num, int reg, unsigned int value);

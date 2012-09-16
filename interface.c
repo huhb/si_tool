@@ -1,6 +1,8 @@
 #include <sys/mman.h>
 #include "interface.h"
 
+extern int debug;
+
 #define PAGE_MASK (~(0x4000-1))  /* 16K pagesize */
 
 void *phy_to_virt(unsigned long phy)
@@ -31,7 +33,7 @@ unsigned int read_device_regs(struct pci_dev *dev, int base_num, int reg, int si
 	va = phy_to_virt(phy);
 
 	switch(size) {
-	case 1:/* byte read */	
+	case 1:/* byte read */
 		return *(volatile unsigned char*)(va + reg);
 	case 2:/* half word */
 		return *(volatile u16*)(va + reg);
