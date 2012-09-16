@@ -12,6 +12,7 @@
 #define DEV_NUM	10
 #define LINE_LEN	1024
 #define DRV_NAME_LEN 128
+#define CONFIG_FILE_LEN 256
 
 struct device_id {
 	u16 vendor_id, device_id;

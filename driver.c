@@ -5,6 +5,7 @@ struct device *first_dev;
 struct driver *first_drv;
 
 extern int debug; /*define in main.c */
+extern char config_path[LINE_LEN];
 extern struct driver rtl8186_driver;
 extern struct driver sb710_usb_driver;
 
@@ -22,7 +23,7 @@ struct driver *drivers_list[] = {
 	NULL,
 };
 
-static int driver_register(struct driver *drv)
+static int register_driver(struct driver *drv)
 {
 	FILE *file;
 	char drv_name[DRV_NAME_LEN], buf[LINE_LEN], *pos;
@@ -36,9 +37,13 @@ static int driver_register(struct driver *drv)
 	DEBUG("drv_name %s\n", drv_name);
 
 #define CONFIG_FILE	"si_config"
-	file = fopen(CONFIG_FILE, "r");
+	if (config_path[0] != '\0')
+		file = fopen(config_path, "r");
+	else
+		file = fopen(CONFIG_FILE, "r");
+
 	if (file == NULL) {
-		printf("not config file si_config");
+		printf("No config file exist\n");
 		exit(-EINVAL);
 	}
 
@@ -295,7 +300,7 @@ static void scan_devices(void)
 	    }
 }
 
-int drivers_init(void)
+int init_drivers(void)
 {
 	int drv_num;
 
@@ -305,7 +310,7 @@ int drivers_init(void)
 	scan_devices();
 
 	for (drv_num = 0; drivers_list[drv_num]; drv_num++) {
-		if (driver_register(drivers_list[drv_num])) {
+		if (register_driver(drivers_list[drv_num])) {
 			drivers_list[drv_num]->next = first_drv;
 			first_drv = drivers_list[drv_num];
 		}
