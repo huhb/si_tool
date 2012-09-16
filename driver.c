@@ -4,7 +4,6 @@ struct pci_access *pacc;
 struct device *first_dev;
 struct driver *first_drv;
 
-extern int debug; /*define in main.c */
 extern char config_path[LINE_LEN];
 extern struct driver rtl8186_driver;
 extern struct driver sb710_usb_driver;
@@ -158,7 +157,6 @@ static int query_devices(u16 dev_type, struct pci_dev **dev)
 	return dev_index;
 }
 
-
 static int run_driver_handler(struct driver* driver, void *param)
 {
 	int ret;
@@ -249,7 +247,6 @@ int type_usb_handler(void)
 	scanf("%d", &usb.mode);
 
 	return run_driver_handler(driver, &usb);
-
 }
 
 int type_sata_handler(void)
@@ -277,7 +274,8 @@ struct device *scan_device(struct pci_dev *p)
 	memset(d->present, 1, 64);
 	if (!pci_read_block(p, 0, d->config, 64))
 	  {
-	    fprintf(stderr, "lspci: Unable to read the standard configuration space header of device %04x:%02x:%02x.%d\n",
+	    fprintf(stderr, "lspci: Unable to read the standard \
+			    configuration space header of device %04x:%02x:%02x.%d\n",
 		    p->domain, p->bus, p->dev, p->func);
 	  }
 	pci_setup_cache(p, d->config, d->config_cached);

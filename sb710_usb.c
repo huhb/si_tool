@@ -22,12 +22,13 @@ int sb710_usb_handler(void *param)
 
 	port_num = sb710_usb_param->port_num;
 	test_mode = sb710_usb_param->mode;
-	printf("set sb710 usb port %d, test mode %d\n", port_num, test_mode);
+	DEBUG("set sb710 usb port %d, test mode %d\n", port_num, test_mode);
 	dev = sb710_usb_param->dev;
 	caplength = read_device_regs(dev, 0, 0, 1);
+	DEBUG("caplength 0x%x\n",caplength);
 	reg = (caplength + 0x44 + 4 * port_num);
 	portsc = read_device_regs(dev, 0, reg, 4);
-	printf("port %d, portsc 0x%x\n", port_num, portsc);
+	DEBUG("port %d, portsc 0x%x\n", port_num, portsc);
 	//write_device_regs(dev, 0, reg, test_mode << 16);
 
 	return 0;

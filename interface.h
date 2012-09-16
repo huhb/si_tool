@@ -14,6 +14,7 @@
 #define DRV_NAME_LEN 128
 #define CONFIG_FILE_LEN 256
 
+extern int debug;
 struct device_id {
 	u16 vendor_id, device_id;
 };

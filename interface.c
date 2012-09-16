@@ -1,8 +1,6 @@
 #include <sys/mman.h>
 #include "interface.h"
 
-extern int debug;
-
 #define PAGE_MASK (~(0x4000-1))  /* 16K pagesize */
 
 void *phy_to_virt(unsigned long phy)
@@ -12,7 +10,7 @@ void *phy_to_virt(unsigned long phy)
 
 	fd = open("/dev/mem", O_RDWR);
 	if(fd < 0) {
-		printf("打开/dev/mem发生错误，可能你需要root权限，试试sudo su先\n");
+		printf("open /dev/mem error，maybe root，try `sudo su`\n");
 		exit(-EINVAL);
 	}
 
@@ -29,7 +27,7 @@ unsigned int read_device_regs(struct pci_dev *dev, int base_num, int reg, int si
 
 	/* get phy address */
 	phy = dev->base_addr[base_num] & ~1;
-	printf("base %d, addr 0x%lx\n", base_num, phy);
+	DEBUG("base %d, addr 0x%lx\n", base_num, phy);
 	va = phy_to_virt(phy);
 
 	switch(size) {

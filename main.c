@@ -1,5 +1,4 @@
 #include <getopt.h>
-#include <unistd.h>
 #include "interface.h"
 
 int debug = 0;  /* 0 off, 1 on */
