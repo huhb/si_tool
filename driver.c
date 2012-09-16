@@ -1,14 +1,15 @@
 #include "interface.h"
 
-#define DEBUG
 struct pci_access *pacc;
 struct device *first_dev;
 struct driver *first_drv;
 
 extern struct driver rtl8186_driver;
+extern struct driver sb710_usb_driver;
 #if 1
 struct driver *drivers_list[] = {
 	&rtl8186_driver,
+	&sb710_usb_driver,
 #if 0	
 	&nec_driver,
 	&cs5536_ide_driver,
@@ -16,7 +17,6 @@ struct driver *drivers_list[] = {
 	&sb600_sata_driver,
 	&sb600_usb_driver,
 	&sb710_sata_driver,
-	&sb710_usb_driver,
 #endif	
 	NULL,
 };
@@ -32,8 +32,11 @@ static int driver_register(struct driver *drv)
 	if (!drv)
 		return -EINVAL;
 
+	memset(drv_name, 0, DRV_NAME_LEN);
 	memcpy(drv_name, drv->name, strlen(drv->name));
-//	printf("drv_name %s\n", drv_name);
+#ifdef xx
+	printf("drv_name %s\n", drv_name);
+#endif
 
 #define CONFIG_FILE	"si_config"
 	file = fopen(CONFIG_FILE, "r");
@@ -56,12 +59,10 @@ static int driver_register(struct driver *drv)
                 if (*pos == '#' || *pos == '\n' || *pos == '\0')
                         continue;
 
-		printf("pos %s\n", pos);
 		pos_tmp = strchr(pos, ' ');
-		if (!pos_tmp) { /* only driver name */
-			printf("post_tmp %s\n", pos_tmp);
+		if (!pos_tmp) /* only driver name */
 			continue;
-		}
+
 		printf("post_tmp %s\n", pos_tmp);
 		printf("pos2 %s\n", pos);
 		if (!strncmp(drv_name, pos, \
@@ -96,21 +97,23 @@ static int driver_register(struct driver *drv)
 }
 #endif
 
-static struct driver *find_pci_driver(u16 vendor, u16 device)
+static struct driver *find_driver(u16 vendor, u16 device)
 {
 	struct driver *d;
 	struct device_id *ids;
 
-#ifdef DEBUG 
 	if (first_drv) {
 		printf("first_drv ok\n");
 		printf("first_drv name %s\n", first_drv->name);
 		printf("fist_drv vendor id 0x%x, device 0x%x\n", first_drv->id_tables[0].vendor_id,
 				first_drv->id_tables[0].device_id);
 	}
-#endif	
+	if (!first_drv) {
+		printf("fist_drv is null\n");
+	}
+
 	for (d = first_drv; d; d = d->next) {
-		for (ids = d->id_tables; ids; ids++) {
+		for (ids = d->id_tables; (ids->vendor_id && ids->device_id); ids++) {
 			printf("ids->vendor 0x%x, 0x%x\n", ids->vendor_id, ids->device_id);
 			if ((ids->vendor_id == vendor) &&
 				ids->device_id == device) {
@@ -122,7 +125,7 @@ static struct driver *find_pci_driver(u16 vendor, u16 device)
 	return NULL;
 }
 
-static int query_devices(u16 dev_type, struct device_id *id)
+static int query_devices(u16 dev_type, struct pci_dev **dev)
 {
 	struct device *d;
 	struct pci_dev *p;
@@ -132,13 +135,23 @@ static int query_devices(u16 dev_type, struct device_id *id)
 	for (d = first_dev; d; d = d->next) {
 		p = d->dev;
 		if (p->device_class == dev_type) {
-			printf("[%d] : %s\n", dev_index,
-				pci_lookup_name(pacc, devbuf, sizeof(devbuf),
+			if (dev_type == PCI_CLASS_SERIAL_USB) {
+				if (p->cache[9] == 0x20) { /* only list ehci controler */
+					printf("[%d] : %s\n", dev_index,
+						pci_lookup_name(pacc, devbuf, sizeof(devbuf),
+								PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
+								p->vendor_id, p->device_id));
+						dev[dev_index] = p;
+						dev_index++;
+				}
+			} else {
+				printf("[%d] : %s\n", dev_index,
+					pci_lookup_name(pacc, devbuf, sizeof(devbuf),
                          	PCI_LOOKUP_VENDOR | PCI_LOOKUP_DEVICE,
                          	p->vendor_id, p->device_id));
-			id[dev_index].vendor_id =  p->vendor_id;
-			id[dev_index].device_id = p ->device_id;
-			dev_index++;
+				dev[dev_index] = p;
+				dev_index++;
+			}
 		}
 	}
 	return dev_index;
@@ -163,22 +176,29 @@ static int run_driver_handler(struct driver* driver, void *param)
 	return ret;
 
 }
+
 int type_netcard_handler(void)
 {
 	int	num;
+	struct net_param net_param;
 	struct driver *driver;
 	struct device_id net_device_ids[4];
+	struct pci_dev *devices[4];
 
 	memset((void*)net_device_ids, 0, 4 * sizeof(struct device_id));
-	if (!query_devices(PCI_CLASS_NETWORK_ETHERNET, net_device_ids)) {
+	if (!query_devices(PCI_CLASS_NETWORK_ETHERNET, devices)) {
 		printf("can't query NETWORK_ETHERNET device\n");
 		return -ENODEV;
 	}
 	printf("Please select device: ");
 	scanf("%d", &num);
 
-	driver = find_pci_driver(net_device_ids[num].vendor_id,
-					net_device_ids[num].device_id);
+	printf("select device 0x%x:0x%x\n", devices[num]->vendor_id,
+					devices[num]->device_id);
+	net_param.dev = devices[num];
+
+	driver = find_driver(devices[num]->vendor_id,
+					devices[num]->device_id);
 	if (!driver) {
 		printf("found no driver match\n");
 		exit(-EINVAL);
@@ -190,12 +210,44 @@ int type_netcard_handler(void)
 
 	printf("Please select test mode: ");
 	scanf("%d", &num);
-
-	return run_driver_handler(driver, &num);
+	net_param.mode = num;
+	return run_driver_handler(driver, &net_param);
 }
 
 int type_usb_handler(void)
 {
+#define USB_CONTROLER_NUM 7
+	int	num;
+	struct usb_param usb;
+	struct driver *driver;
+	struct pci_dev *usb_devices[USB_CONTROLER_NUM];
+
+	if (!query_devices(PCI_CLASS_SERIAL_USB, usb_devices)) {
+		printf("can't query USB_CONTROLER device\n");
+		return -ENODEV;
+	}
+	printf("Please select device: ");
+	scanf("%d", &num);
+	usb.dev = usb_devices[num];
+
+	driver = find_driver(usb_devices[num]->vendor_id,
+					usb_devices[num]->device_id);
+	if (!driver) {
+		printf("found no driver match\n");
+		exit(-EINVAL);
+	}
+
+	printf("Please select usb port: ");
+	scanf("%d", &usb.port_num);
+	printf("[1] J_STATE mode\n"
+		"[2] K_STATE mode\n"
+		"[3] SE0_NAK mode\n"
+		"[4] Packet\n");
+
+	printf("Please select test mode: ");
+	scanf("%d", &usb.mode);
+
+	return run_driver_handler(driver, &usb);
 
 }
 

@@ -3,12 +3,14 @@
 int rtl8186_handler(void *param)
 {
 	int test_mode;
+	struct net_param *net_param = param;
 
 	if (!param) {
-		printf("Test mode not found\n");
+		printf("net param is null\n");
 		exit(-EINVAL);
 	}
-	test_mode = *(int*)param;	
+	test_mode = net_param->mode;
+
 	printf("test_mode %d\n", test_mode);
 
 	return 0;	
