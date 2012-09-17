@@ -6,11 +6,11 @@ struct driver *first_drv;
 
 extern char config_path[LINE_LEN];
 extern struct driver rtl8186_driver;
-extern struct driver sb710_usb_driver;
+extern struct driver sb7xx_usb_driver;
 
 struct driver *drivers_list[] = {
 	&rtl8186_driver,
-	&sb710_usb_driver,
+	&sb7xx_usb_driver,
 #if 0	
 	&nec_driver,
 	&cs5536_ide_driver,

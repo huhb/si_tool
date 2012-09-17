@@ -37,7 +37,7 @@ ERROR:
 	return -EINVAL;
 }
 
-struct driver sb710_usb_driver = {
-	.name = "sb710_usb",
+struct driver sb7xx_usb_driver = {
+	.name = "sb7xx_usb",
 	.driver_handler = sb710_usb_handler,
 };
