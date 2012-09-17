@@ -11,9 +11,9 @@ int rtl8186_handler(void *param)
 	}
 	test_mode = net_param->mode;
 
-	printf("test_mode %d\n", test_mode);
+	DEBUG("rtl8186, test_mode %d\n", test_mode);
 
-	return 0;	
+	return 0;
 }
 
 struct driver rtl8186_driver = {

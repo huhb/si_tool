@@ -10,7 +10,7 @@ void *phy_to_virt(unsigned long phy)
 
 	fd = open("/dev/mem", O_RDWR);
 	if(fd < 0) {
-		printf("open /dev/mem error，maybe root，try `sudo su`\n");
+		printf("open /dev/mem error!\n");
 		exit(-EINVAL);
 	}
 

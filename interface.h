@@ -13,6 +13,9 @@
 #define LINE_LEN	1024
 #define DRV_NAME_LEN 128
 #define CONFIG_FILE_LEN 256
+#define INPUT_LENGTH 256
+#define MAX_USB_PORT 32
+#define MAX_STAT_SLOT 32
 
 extern int debug;
 struct device_id {
@@ -33,6 +36,7 @@ struct driver {
 	int (*fixup)(void);
 	int (*driver_handler)(void* parames);
 	struct driver *next;
+	void *drv_data;
 };
 
 struct net_param {
@@ -41,13 +45,15 @@ struct net_param {
 };
 
 struct usb_param {
-	int port_num;
+	int port_num[MAX_USB_PORT];
+	int port_nr;
 	int mode;
 	struct pci_dev *dev;
 };
 
 struct sata_param {
-	int slot;
+	int slot[MAX_STAT_SLOT];
+	int slot_nr;
 	int mode;
 	struct pci_dev *dev;
 };

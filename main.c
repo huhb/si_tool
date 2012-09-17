@@ -65,6 +65,10 @@ int main(int argc, char **argv)
 	if (handled_device)
 		init_drivers();
 
+	if (getuid() != 0) {
+		printf("Are you root? Please check it\n");
+		return  -EPERM;
+	}
 	switch(handled_device) {
 	case 1:
 		ret = type_usb_handler();

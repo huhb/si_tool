@@ -157,108 +157,237 @@ static int query_devices(u16 dev_type, struct pci_dev **dev)
 	return dev_index;
 }
 
-static int run_driver_handler(struct driver* driver, void *param)
+static int run_driver_handler(struct driver* driver)
 {
 	int ret;
 
 	printf("start to setup test_mode.....");
-	DEBUG("driver _handler %p\n", driver->driver_handler);
+	DEBUG("driver_handler %p\n", driver->driver_handler);
 	if (driver->fixup)
 		driver->fixup();
 
 	if (driver->driver_handler)
-		ret = driver->driver_handler(param);
+		ret = driver->driver_handler(driver->drv_data);
 
 	if (!ret) printf("successfully \n");
 	else printf("faild\n");
 
 	return ret;
+}
 
+static int handle_user_input(char *u_in, int *array, int max_num)
+{
+	int index = 0;
+	char *p;
+
+	fgets(u_in, INPUT_LENGTH, stdin);
+	while (*u_in == '\0') {
+		printf("Input error\n");
+		return -EINVAL;
+	}
+	for (p = u_in; p; p = strchr(p, ' '), index++) {
+		while (*p == ' ')
+			p++;
+		array[index] = strtol(p, NULL, 10);
+		if (array[index] > max_num) {
+			printf("Input number is larger than max_num\n");
+			return -EINVAL;
+		}
+	}
+	return index;
 }
 
 int type_netcard_handler(void)
 {
-	int	num;
-	struct net_param net_param;
-	struct driver *driver;
-	struct device_id net_device_ids[4];
-	struct pci_dev *devices[4];
+#define NET_CONTROLER_NUM 3
+	int	dev_num, dev_array[NET_CONTROLER_NUM], index, ret, i, drv_num = 0;
+	char	user_input[INPUT_LENGTH], *p;
+	struct net_param net[NET_CONTROLER_NUM];
+	struct driver *drivers[NET_CONTROLER_NUM];
+	struct pci_dev *net_devices[NET_CONTROLER_NUM];
 
-	memset((void*)net_device_ids, 0, 4 * sizeof(struct device_id));
-	if (!query_devices(PCI_CLASS_NETWORK_ETHERNET, devices)) {
-		printf("can't query NETWORK_ETHERNET device\n");
+	dev_num = query_devices(PCI_CLASS_NETWORK_ETHERNET, net_devices);
+	if (dev_num == 0) {
+		printf("can't query USB_CONTROLER device\n");
 		return -ENODEV;
 	}
-	printf("Please select device: ");
-	scanf("%d", &num);
+	if (dev_num == 1)
+		printf("Please select device [0]: ");
+	else
+		printf("Please select device [0 - %d]: ", dev_num-1);
 
-	DEBUG("select device 0x%x:0x%x\n", devices[num]->vendor_id,
-					devices[num]->device_id);
-	net_param.dev = devices[num];
+	memset(user_input, 0, INPUT_LENGTH);
+	memset(dev_array, 0, NET_CONTROLER_NUM);
+	ret = handle_user_input(user_input, dev_array, dev_num);
+	if (ret <= 0)
+	       return ret;
 
-	driver = find_driver(devices[num]->vendor_id,
-					devices[num]->device_id);
-	if (!driver) {
-		printf("found no driver match\n");
-		exit(-EINVAL);
+	for (i = 0; i < ret; i++) {
+		int handled_dev_num;
+
+		handled_dev_num = dev_array[i];
+		drivers[i] = find_driver(net_devices[handled_dev_num]->vendor_id,
+					net_devices[handled_dev_num]->device_id);
+		if (drivers[i] == NULL) {
+			printf("Device [%d] no driver match\n", handled_dev_num);
+			continue;
+		}
+		memset(user_input, 0, INPUT_LENGTH);
+		printf("[0] 10M mode\n"
+			"[1] 100M mode\n"
+			"[2] 1000M mode\n");
+		printf("Please select test mode: ");
+		scanf("%d", &net[i].mode);
+
+		net[i].dev = net_devices[handled_dev_num];
+		drivers[i]->drv_data = &net[i];
+		drv_num++;
 	}
-
-	printf("[0] 10M mode\n"
-		"[1] 100M mode\n"
-		"[2] 1000M mode\n");
-
-	printf("Please select test mode: ");
-	scanf("%d", &num);
-	net_param.mode = num;
-	return run_driver_handler(driver, &net_param);
+	for (i = 0; i < drv_num; i++) {
+		ret = run_driver_handler(drivers[i]);
+		if (ret != 0)
+			return ret;
+	}
+	return ret;
 }
 
 int type_usb_handler(void)
 {
 #define USB_CONTROLER_NUM 7
-	int	num;
-	struct usb_param usb;
-	struct driver *driver;
+	int	dev_num, dev_array[USB_CONTROLER_NUM], index, ret, i, drv_num = 0;
+	char	user_input[INPUT_LENGTH], *p;
+	struct usb_param usb[USB_CONTROLER_NUM];
+	struct driver *drivers[USB_CONTROLER_NUM];
 	struct pci_dev *usb_devices[USB_CONTROLER_NUM];
 
-	if (!query_devices(PCI_CLASS_SERIAL_USB, usb_devices)) {
+	dev_num = query_devices(PCI_CLASS_SERIAL_USB, usb_devices);
+	if (dev_num == 0) {
 		printf("can't query USB_CONTROLER device\n");
 		return -ENODEV;
 	}
-	printf("Please select device: ");
-	scanf("%d", &num);
-	usb.dev = usb_devices[num];
+	if (dev_num == 1)
+		printf("Please select device [0]: ");
+	else
+		printf("Please select device [0 - %d]: ", dev_num-1);
 
-	driver = find_driver(usb_devices[num]->vendor_id,
-					usb_devices[num]->device_id);
-	if (!driver) {
-		printf("found no driver match\n");
-		exit(-EINVAL);
+	memset(user_input, 0, INPUT_LENGTH);
+	memset(dev_array, 0, USB_CONTROLER_NUM);
+	ret = handle_user_input(user_input, dev_array, dev_num);
+	if (ret <= 0)
+	       return ret;
+
+	for (i = 0; i < ret; i++) {
+		int handled_dev_num;
+
+		handled_dev_num = dev_array[i];
+		drivers[i] = find_driver(usb_devices[handled_dev_num]->vendor_id,
+					usb_devices[handled_dev_num]->device_id);
+		if (drivers[i] == NULL) {
+			printf("Device [%d] no driver match\n", handled_dev_num);
+			continue;
+		}
+		memset(user_input, 0, INPUT_LENGTH);
+PORT_INPUT:
+		printf("Please select usb port for Device[%d]: ", dev_array[i]);
+		usb[i].port_nr = handle_user_input(user_input, usb[i].port_num, MAX_USB_PORT);
+		if (usb[i].port_nr <= 0) /* input error */
+			goto PORT_INPUT;
+		printf("[1] J_STATE mode\n"
+			"[2] K_STATE mode\n"
+			"[3] SE0_NAK mode\n"
+			"[4] Packet\n");
+MODE_SELECT:
+		printf("Please select test mode: ");
+		if (scanf("%d", &usb[i].mode) == 1) {
+			if ((usb[i].mode > 4) || (usb[i].mode < 1)) {
+				printf("Input error. should be 1 ~ 4\n");
+				goto MODE_SELECT;
+			}
+		} else {
+			int garbage[128];
+			/* work around that input stream can't be flushed */ 
+			scanf("%s", garbage);
+			printf("Input error. should be 1 ~ 4\n");
+			goto MODE_SELECT;
+		}
+		DEBUG("select mode is %d\n", usb[i].mode);
+		usb[i].dev = usb_devices[handled_dev_num];
+		drivers[i]->drv_data = &usb[i];
+		drv_num++;
 	}
-
-	printf("Please select usb port: ");
-	scanf("%d", &usb.port_num);
-	printf("[1] J_STATE mode\n"
-		"[2] K_STATE mode\n"
-		"[3] SE0_NAK mode\n"
-		"[4] Packet\n");
-
-	printf("Please select test mode: ");
-	scanf("%d", &usb.mode);
-
-	return run_driver_handler(driver, &usb);
+	for (i = 0; i < drv_num; i++) {
+		ret = run_driver_handler(drivers[i]);
+		if (ret != 0)
+			return ret;
+	}
+	return ret;
 }
 
 int type_sata_handler(void)
 {
-#if 0
-	list same catgeory device
-	user select device
-	find  driver for device
-	user select slot
-	user select test_mode
-	run test_mode
-#endif	
+#define SATA_CONTROLER_NUM 7
+	int	dev_num, dev_array[SATA_CONTROLER_NUM], index, ret, i, drv_num = 0;
+	char	user_input[INPUT_LENGTH], *p;
+	struct sata_param sata[SATA_CONTROLER_NUM];
+	struct driver *drivers[SATA_CONTROLER_NUM];
+	struct pci_dev *sata_devices[SATA_CONTROLER_NUM];
+
+	dev_num = query_devices(PCI_CLASS_STORAGE_SATA, sata_devices);
+	if (dev_num == 0) {
+		printf("can't query STAT_CONTROLER device\n");
+		return -ENODEV;
+	}
+	if (dev_num == 1)
+		printf("Please select device [0]: ");
+	else
+		printf("Please select device [0 - %d]: ", dev_num-1);
+
+	memset(user_input, 0, INPUT_LENGTH);
+	memset(dev_array, 0, SATA_CONTROLER_NUM);
+	ret = handle_user_input(user_input, dev_array, dev_num);
+	if (ret <= 0)
+	       return ret;
+
+	for (i = 0; i < ret; i++) {
+		int handled_dev_num;
+
+		handled_dev_num = dev_array[i];
+		drivers[i] = find_driver(sata_devices[handled_dev_num]->vendor_id,
+					sata_devices[handled_dev_num]->device_id);
+		if (drivers[i] == NULL) {
+			printf("Device [%d] no driver match\n", handled_dev_num);
+			continue;
+		}
+		memset(user_input, 0, INPUT_LENGTH);
+		printf("Please select sata slot for Device[%d]: ", dev_array[i]);
+		sata[i].slot_nr = handle_user_input(user_input, sata[i].slot, MAX_STAT_SLOT);
+		printf("[0] SATA1 mode\n"
+			"[1] SATA2 mode\n");
+MODE_SELECT:
+		printf("Please select test mode: ");
+		if (scanf("%d", &sata[i].mode) == 1) {
+			if ((sata[i].mode > 4) || (sata[i].mode < 1)) {
+				printf("Input error. should be 1 ~ 4\n");
+				goto MODE_SELECT;
+			}
+		} else {
+			int garbage[128];
+			/* work around that input stream can't be flushed */
+			scanf("%s", garbage);
+			printf("Input error. should be 1 ~ 4\n");
+			goto MODE_SELECT;
+		}
+
+		sata[i].dev = sata_devices[handled_dev_num];
+		drivers[i]->drv_data = &sata[i];
+		drv_num++;
+	}
+	for (i = 0; i < drv_num; i++) {
+		ret = run_driver_handler(drivers[i]);
+		if (ret != 0)
+			return ret;
+	}
+	return ret;
 }
 
 struct device *scan_device(struct pci_dev *p)
