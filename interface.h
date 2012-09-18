@@ -8,7 +8,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define SI_VERSION  "0.0.1"
+#define SI_VERSION  "0.0.2"
 #define DEV_NUM	10
 #define LINE_LEN	1024
 #define DRV_NAME_LEN 128
