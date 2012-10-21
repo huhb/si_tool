@@ -14,8 +14,22 @@
 #define DRV_NAME_LEN 128
 #define CONFIG_FILE_LEN 256
 #define INPUT_LENGTH 256
+
 #define MAX_USB_PORT 32
-#define MAX_STAT_SLOT 32
+#define MAX_SATA_SLOT 32
+
+#define NET_CONTROLER_NUM 3
+#define USB_CONTROLER_NUM 7
+#define SATA_CONTROLER_NUM 7
+
+enum {
+	DEVICE_SELECT	= 0,
+	PORT_INPUT,
+	USB_MODE_SELECT,
+	NET_MODE_SELECT,
+	SATA_MODE_SELECT,
+	HANDLER_RUN,
+};
 
 extern int debug;
 struct device_id {
@@ -52,7 +66,7 @@ struct usb_param {
 };
 
 struct sata_param {
-	int slot[MAX_STAT_SLOT];
+	int slot[MAX_SATA_SLOT];
 	int slot_nr;
 	int mode;
 	struct pci_dev *dev;
